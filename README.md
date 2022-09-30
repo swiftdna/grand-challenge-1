@@ -1,13 +1,4 @@
-# Route Blocking 
-
-We have switched from the basic socket example to the next level of 
-complexity with the introduction of two new technologies 1) protobuf, 
-and 2) gRPC. This simple addition has added capabilities to enhance
-message encoding/decoding as well as several layers of abstraction over
-the socket; introduces channels.
-
-Even with the addition of protobuf and gRPC the pattern/design of our
-previous example is the same. Encode message, send message, decode reply.
+# Grand Challenge 1
 
 ## Preparing
 
@@ -45,65 +36,15 @@ libraries (jars), and build dependencies.
   - The project has two internal library directories (lib, lib-ref2).
   - Code generation (build_pb.sh) is required
 
-**Note: Simply importing the project into your IDE will not work.**
+## Running the project
+Follow the below instructions to run the project
 
-## Running
+1. Update the protoc and java codegen path in the `build_pb.sh` file
+2. Run the `build_pb.sh` script to generate the proto files, class files for the source code
+3. Run the `runServer.sh` script to boot up the server
+4. Run the `runClient.sh` script to boot up the client
 
-The execution scripts add additional functionality. Take a few 
-minutes to look over the scripts
-
-## Foundation Work
-
-After exploring the new technologies used by this lab, we begin
-the work to build a strong foundation for all future class work
-on distributed systems. 
-   
-Work
-  - Be sure to understand the request-response nature of the client
-    server in our lab.
-  - Change the client to use a configuration file like the server. Hard
-    coded values in RouteClient.java are a bad design.
-  - Without changing the gRPC configuration (calls), extend the code 
-    to be nonblocking.
-  - Replace the printf calls to use slf4j.
-    
-Question(s)
-  - What are the positive and negative aspects of this code (blocking 
-    calls)?
-  - What are your timing numbers (how long does it take to send messages?)
-
-## Core Work
-
-Please attempt the foundation work (above) before attempting this section. 
-
-Now that you have an understanding of the technologies in use, we now get
-to the core of the lab that positions us for the challenge and research. 
-
-We are starting with code you created above, it provides us:
-
-   - A basic pairwise (client-server) topology that sends 10 messages
-   
-     `(A) -----> (B)`
-    
-      - It features a nonblocking communication (you created)
-      - logging
-   
-#### Code the following
-
-Time to build from our toy problem to include more complex (many more 
-processes) than our first client-server work.
-
-  - Add additional servers to create a ring network (e.g., AB, BC, CA)
-  
-    `(A) -----> (B) -----> (C) -----> (A)`
-  
-  - Once you have your ring working, extend it to more complex 
-    topologies (e.g., AB, AC, BD, CD, DE, CE)
-    
-    `What does the topology look like?`
-    
-  - How did you modify the code for the branches (e.g., AB, AC)? 
-  
-      - hint Time To Live (TTL)
-      - hint Vector Clocks
-  
+## Contributors
+Prashanth Subbiah
+Venkata Satya Phani Sai Sravya
+Ravishanker Thadishetti
