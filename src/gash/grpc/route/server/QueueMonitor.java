@@ -3,10 +3,9 @@ package gash.grpc.route.server;
 import java.util.concurrent.LinkedBlockingDeque;
 
 public class QueueMonitor {
-    private static final int sMaxWork = 10;
-
+    // private static final int sMaxWork = 10;
+    private static final int sleepTime = 200;
 	private boolean _verbose = false;
-	private int _iter = 1;
 	private LinkedBlockingDeque<Work> _queue;
 	private LinkedBlockingDeque<Work> _completedqueue;
 	private Put _put;
@@ -22,29 +21,29 @@ public class QueueMonitor {
 	public void setup() {
 		_queue = new LinkedBlockingDeque<Work>();
 		_completedqueue = new LinkedBlockingDeque<Work>();
-		_put = new Put[](_queue, _verbose);
-		_take = new Take(_queue,_completedqueue, _verbose);
-		_monitor = new Monitor(_put, _take, QueueMonitor.sMaxWork, _verbose);
+		_put = new Put(_queue, _verbose);
+		_take = new Take(_queue, _completedqueue, _verbose);
+		_monitor = new Monitor(_put, _take, _completedqueue, _verbose);
 	}
 
 	public void listen() {
 		if (_verbose)
-			System.out.println("--> starting queue monitor " + _iter);
+			System.out.println("--> starting queue monitor ");
 		_put.start();
 		_take.start();
 		_monitor.start();
 
-		int maxWaiting = 50;
+		int maxWaiting = 5000;
 		while (_take._isRunning) {
 			try {
 				maxWaiting--;
 				if (maxWaiting == 0) {
-					System.out.println("--> terminated (timed out) test " + _iter);
+					System.out.println("--> terminated (timed out)");
 					_take._isRunning = false;
 				}
 				if (_verbose)
 					System.out.println("--> waiting: " + _queue.size());
-				Thread.sleep(200);
+				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
@@ -60,11 +59,11 @@ public class QueueMonitor {
 	public static final class Work {
 		public int _id;
 		public String _message;
-		public String _sender;
-		public String _receiver;
+		public int _sender;
+		public int _receiver;
 		public int _vowels;
 
-		public Work(int id, String message, String sender, String receiver) {
+		public Work(int id, String message, int sender, int receiver) {
 			_id = id;
 			_message = message;
 			_sender = sender;
@@ -92,6 +91,9 @@ public class QueueMonitor {
 		public Put(LinkedBlockingDeque<Work> q, boolean verbose) {
 			_verbose = verbose;
 			_q = q;
+
+			// Mock put items here
+			_q.add(new Work(1,"Hello", 2, 3));
 		}
 
 		public void shutdown() {
@@ -104,14 +106,9 @@ public class QueueMonitor {
 		@Override
 		public void run() {
 			while (_isRunning) {
-				_genID++;
-				_sum += _genID;
-				if (_verbose && _genID % 10 == 0)
-					System.out.println("---> putting " + _genID);
 				// _q.add(new Work(_genID, _genID));
-
 				try {
-					Thread.sleep(10); // simulate variability
+					Thread.sleep(sleepTime); // simulate variability
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
@@ -130,7 +127,6 @@ public class QueueMonitor {
 	 */
 	public static final class Take extends Thread {
 		public boolean _verbose = false;
-		public int _iter = 0;
 		public int _sum = 0;
 		public boolean _isRunning = true;
 		public LinkedBlockingDeque<Work> _q;
@@ -157,16 +153,19 @@ public class QueueMonitor {
 						// Take and process it
 						if (_verbose) {
 							System.out.println("Items found in queue!");
-							Work x = _q.pop();
-							System.out.println("got "+ x._message+ " from: "+ x._sender);
-							// Processing code
 						}
+						Work x = _q.pop();
+						System.out.println("got "+ x._message+ " from: "+ x._sender);
+						// Processing code
+						Work processedWork = new Work( x._id, x._message, x._sender, x._receiver);
+						processedWork.updateVowelsCount(5);
+						_pq.add(processedWork);
 					} else {
 						// Keep checking the queue to process
 						if (_verbose) {
-							System.out.println("No items found in queue");
+							System.out.println("Take: No items found in queue");
 						}
-						Thread.sleep(10);
+						Thread.sleep(sleepTime);
 					}
 				} catch (Exception e) {
 					// ignore - part of the test
@@ -189,14 +188,14 @@ public class QueueMonitor {
 		public boolean _verbose = false;
 		public Put _put;
 		public Take _take;
-		public int _maxWork;
 		public boolean _isRunning = true;
+		public LinkedBlockingDeque<Work> _cq;
 
-		public Monitor(Put p, Take t, int maxWork, boolean verbose) {
+		public Monitor(Put p, Take t, LinkedBlockingDeque<Work> cq,boolean verbose) {
 			_verbose = verbose;
 			_put = p;
 			_take = t;
-			_maxWork = maxWork;
+			_cq = cq;
 		}
 
 		public void shutdown() {
@@ -211,18 +210,13 @@ public class QueueMonitor {
 		@Override
 		public void run() {
 			while (_isRunning) {
-				if (_maxWork == 0) {
-					shutdown();
-				} else {
-					_maxWork--;
-					if (_verbose) {
-						System.out.println("Monitor: " + _maxWork + ", P: " + _put._sum + ", T: " + _take._sum);
+				try {
+					if (_cq.size() > 0) {
+						System.out.println("Completed items: " + _cq.size());
 					}
-					try {
-						Thread.sleep(200);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
+					Thread.sleep(sleepTime);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
 				}
 			}
 		}
