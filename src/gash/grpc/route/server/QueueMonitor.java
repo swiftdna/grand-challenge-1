@@ -155,8 +155,17 @@ public class QueueMonitor {
 				try {
 					if (_q.size() > 0) {
 						// Take and process it
+						if (_verbose) {
+							System.out.println("Items found in queue!");
+							Work x = _q.pop();
+							System.out.println("got "+ x._message+ " from: "+ x._sender);
+							// Processing code
+						}
 					} else {
 						// Keep checking the queue to process
+						if (_verbose) {
+							System.out.println("No items found in queue");
+						}
 						Thread.sleep(10);
 					}
 				} catch (Exception e) {
