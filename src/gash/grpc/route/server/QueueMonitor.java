@@ -8,6 +8,7 @@ public class QueueMonitor {
 	private boolean _verbose = false;
 	private int _iter = 1;
 	private LinkedBlockingDeque<Work> _queue;
+	private LinkedBlockingDeque<Work> _completedqueue;
 	private Put _put;
 	private Take _take;
 	private Monitor _monitor;
@@ -20,8 +21,8 @@ public class QueueMonitor {
 
 	public void setup() {
 		_queue = new LinkedBlockingDeque<Work>();
-		_put = new Put(_queue, _verbose);
-		_take = new Take(_queue, _verbose);
+		_put = new Put[](_queue, _verbose);
+		_take = new Take(_queue,_completedqueue, _verbose);
 		_monitor = new Monitor(_put, _take, QueueMonitor.sMaxWork, _verbose);
 	}
 
@@ -97,7 +98,7 @@ public class QueueMonitor {
 				_sum += _genID;
 				if (_verbose && _genID % 10 == 0)
 					System.out.println("---> putting " + _genID);
-				_q.add(new Work(_genID, _genID));
+				// _q.add(new Work(_genID, _genID));
 
 				try {
 					Thread.sleep(10); // simulate variability
@@ -123,10 +124,12 @@ public class QueueMonitor {
 		public int _sum = 0;
 		public boolean _isRunning = true;
 		public LinkedBlockingDeque<Work> _q;
+		public LinkedBlockingDeque<Work> _pq;
 
-		public Take(LinkedBlockingDeque<Work> q, boolean verbose) {
+		public Take(LinkedBlockingDeque<Work> q, LinkedBlockingDeque<Work> pq, boolean verbose) {
 			_verbose = verbose;
 			_q = q;
+			_pq = pq;
 		}
 
 		public void shutdown() {
@@ -140,14 +143,15 @@ public class QueueMonitor {
 		public void run() {
 			while (_isRunning) {
 				try {
-					Work w = _q.take(); // blocking
-					_iter++;
-					_sum += w._payload;
-					if (_verbose && _sum % 10 == 0)
-						System.out.println("taken: " + _iter);
-					// we don't need to sleep!
+					if (_q.size() > 0) {
+						// Take and process it
+					} else {
+						// Keep checking the queue to process
+						Thread.sleep(10);
+					}
 				} catch (Exception e) {
 					// ignore - part of the test
+					e.printStackTrace();
 				}
 			}
 
