@@ -21,6 +21,7 @@ public class QueueMonitor {
 
 	public void setup() {
 		_queue = new LinkedBlockingDeque<Work>();
+		_completedqueue = new LinkedBlockingDeque<Work>();
 		_put = new Put[](_queue, _verbose);
 		_take = new Take(_queue,_completedqueue, _verbose);
 		_monitor = new Monitor(_put, _take, QueueMonitor.sMaxWork, _verbose);
