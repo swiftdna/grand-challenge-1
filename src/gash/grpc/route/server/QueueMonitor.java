@@ -22,7 +22,7 @@ public class QueueMonitor {
 	public void setup() {
 		_queue = new LinkedBlockingDeque<Work>();
 		_completedqueue = new LinkedBlockingDeque<Work>();
-		_put = new Put[](_queue, _verbose);
+		_put = new Put(_queue, _verbose);
 		_take = new Take(_queue,_completedqueue, _verbose);
 		_monitor = new Monitor(_put, _take, QueueMonitor.sMaxWork, _verbose);
 	}
@@ -60,11 +60,11 @@ public class QueueMonitor {
 	public static final class Work {
 		public int _id;
 		public String _message;
-		public String _sender;
-		public String _receiver;
+		public int _sender;
+		public int _receiver;
 		public int _vowels;
 
-		public Work(int id, String message, String sender, String receiver) {
+		public Work(int id, String message, int sender, int receiver) {
 			_id = id;
 			_message = message;
 			_sender = sender;
@@ -92,6 +92,9 @@ public class QueueMonitor {
 		public Put(LinkedBlockingDeque<Work> q, boolean verbose) {
 			_verbose = verbose;
 			_q = q;
+
+			// Mock put items here
+			_q.add(new Work(1,"Hello", 2, 3));
 		}
 
 		public void shutdown() {
@@ -157,10 +160,10 @@ public class QueueMonitor {
 						// Take and process it
 						if (_verbose) {
 							System.out.println("Items found in queue!");
-							Work x = _q.pop();
-							System.out.println("got "+ x._message+ " from: "+ x._sender);
-							// Processing code
 						}
+						Work x = _q.pop();
+						System.out.println("got "+ x._message+ " from: "+ x._sender);
+						// Processing code
 					} else {
 						// Keep checking the queue to process
 						if (_verbose) {
