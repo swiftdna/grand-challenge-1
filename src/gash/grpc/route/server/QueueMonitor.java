@@ -59,11 +59,20 @@ public class QueueMonitor {
 	 */
 	public static final class Work {
 		public int _id;
-		public int _payload;
+		public String _message;
+		public String _sender;
+		public String _receiver;
+		public int _vowels;
 
-		public Work(int id, int payload) {
+		public Work(int id, String message, String sender, String receiver) {
 			_id = id;
-			_payload = payload;
+			_message = message;
+			_sender = sender;
+			_receiver = receiver;
+		}
+
+		public void updateVowelsCount(int count) {
+			_vowels = count;
 		}
 	}
 
