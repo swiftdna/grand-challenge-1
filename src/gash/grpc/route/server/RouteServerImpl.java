@@ -29,6 +29,7 @@ import route.RouteServiceGrpc.RouteServiceImplBase;
  */
 public class RouteServerImpl extends RouteServiceImplBase {
 	private Server svr;
+	private QueueMonitor qm;
 
 	/**
 	* Configuration of the server's identity, port, and role
@@ -97,9 +98,12 @@ public class RouteServerImpl extends RouteServiceImplBase {
 	private void start() throws Exception {
 		svr = ServerBuilder.forPort(RouteServer.getInstance().getServerPort()).addService(new RouteServerImpl())
 				.build();
+		qm = new QueueMonitor();
 
 		System.out.println("-- starting server");
 		svr.start();
+		System.out.println("-- starting queue monitor");
+		qm.start(true);
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
@@ -137,7 +141,6 @@ public class RouteServerImpl extends RouteServiceImplBase {
 
 		// do the work and reply
 		builder.setPayload(process(request));
-
 		route.Route rtn = builder.build();
 		responseObserver.onNext(rtn);
 		responseObserver.onCompleted();
