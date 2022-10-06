@@ -68,10 +68,23 @@ public class QueueMonitor {
 			_message = message;
 			_sender = sender;
 			_receiver = receiver;
+
 		}
 
 		public void updateVowelsCount(int count) {
+			System.out.println("Number of Vowels: "+count);
 			_vowels = count;
+			
+		}
+		public int calculateVowels(String message){
+			int count = 0;
+			for (int i=0 ; i<message.length(); i++){
+				char ch = message.charAt(i);
+				if(ch == 'a'|| ch == 'e'|| ch == 'i' ||ch == 'o' ||ch == 'u'||ch == ' '){
+				   count ++;
+				}
+			 }
+			return count;
 		}
 	}
 
@@ -136,11 +149,13 @@ public class QueueMonitor {
 			_verbose = verbose;
 			_q = q;
 			_pq = pq;
+			System.out.println("Take: shutting down.."+_q);
 		}
 
 		public void shutdown() {
 			if (_verbose) {
 				System.out.println("Take: shutting down..");
+
 			}
 			_isRunning = false;
 		}
@@ -158,11 +173,15 @@ public class QueueMonitor {
 						System.out.println("got "+ x._message+ " from: "+ x._sender);
 						// Processing code
 						Work processedWork = new Work( x._id, x._message, x._sender, x._receiver);
-						processedWork.updateVowelsCount(5);
+						System.out.println(processedWork._message);
+						
+						int VowelCount = processedWork.calculateVowels(processedWork._message);
+						processedWork.updateVowelsCount(VowelCount);
 						_pq.add(processedWork);
 					} else {
 						// Keep checking the queue to process
 						if (_verbose) {
+
 							System.out.println("Take: No items found in queue");
 						}
 						Thread.sleep(sleepTime);
