@@ -29,7 +29,7 @@ import route.RouteServiceGrpc.RouteServiceImplBase;
  */
 public class RouteServerImpl extends RouteServiceImplBase {
 	private Server svr;
-	private QueueMonitor qm;
+	private static QueueMonitor qm;
 
 	/**
 	* Configuration of the server's identity, port, and role
@@ -67,10 +67,13 @@ public class RouteServerImpl extends RouteServiceImplBase {
 
 		// TODO placeholder
 		String content = new String(msg.getPayload().toByteArray());
-		System.out.println("-- got: " + msg.getOrigin() + ", path: " + msg.getPath() + ", with: " + content);
+		System.out.println("-- got: " + msg.getOrigin() +  ", to: " + msg.getDestination() + ", path: " + msg.getPath() + ", with: " + content);
 
-		// TODO complete processing
-		final String blank = "dummy processed data for " + content;
+		// Add item to queue
+		qm.addWork(msg);
+
+		// Send ACK
+		final String blank = "Request accepted";
 		byte[] raw = blank.getBytes();
 
 		return ByteString.copyFrom(raw);
@@ -103,7 +106,9 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		System.out.println("-- starting server");
 		svr.start();
 		System.out.println("-- starting queue monitor");
-		qm.start(true);
+		new Thread(() -> {
+			qm.start(true);
+		}).start();
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override

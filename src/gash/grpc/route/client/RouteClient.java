@@ -35,6 +35,7 @@ public class RouteClient {
 		bld.setId(mID);
 		bld.setOrigin(RouteClient.clientID);
 		bld.setPath(path);
+		bld.setDestination(201);
 
 		byte[] hello = payload.getBytes();
 		bld.setPayload(ByteString.copyFrom(hello));

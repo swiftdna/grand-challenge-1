@@ -50,6 +50,16 @@ public class QueueMonitor {
 		}
 	}
 
+	public void hello() {
+		System.out.println("Hello dude!");
+	}
+
+	public void addWork(route.Route msg) {
+		String content = new String(msg.getPayload().toByteArray());
+		Work input_work = new Work((int) msg.getId(), content, (int)msg.getOrigin(), (int)msg.getDestination());
+		_queue.add(input_work);
+	}
+
 	/**
 	 * the work
 	 * 
@@ -68,23 +78,17 @@ public class QueueMonitor {
 			_message = message;
 			_sender = sender;
 			_receiver = receiver;
-
 		}
 
-		public void updateVowelsCount(int count) {
-			System.out.println("Number of Vowels: "+count);
-			_vowels = count;
-			
-		}
-		public int calculateVowels(String message){
+		public void calculateVowels(){
 			int count = 0;
-			for (int i=0 ; i<message.length(); i++){
-				char ch = message.charAt(i);
+			for (int i=0 ; i<_message.length(); i++){
+				char ch = _message.charAt(i);
 				if(ch == 'a'|| ch == 'e'|| ch == 'i' ||ch == 'o' ||ch == 'u'||ch == ' '){
 				   count ++;
 				}
-			 }
-			return count;
+			}
+			_vowels = count;
 		}
 	}
 
@@ -106,7 +110,7 @@ public class QueueMonitor {
 			_q = q;
 
 			// Mock put items here
-			_q.add(new Work(1,"Hello", 2, 3));
+			// _q.add(new Work(1,"Hello", 2, 3));
 		}
 
 		public void shutdown() {
@@ -149,13 +153,11 @@ public class QueueMonitor {
 			_verbose = verbose;
 			_q = q;
 			_pq = pq;
-			System.out.println("Take: shutting down.."+_q);
 		}
 
 		public void shutdown() {
 			if (_verbose) {
 				System.out.println("Take: shutting down..");
-
 			}
 			_isRunning = false;
 		}
@@ -167,17 +169,13 @@ public class QueueMonitor {
 					if (_q.size() > 0) {
 						// Take and process it
 						if (_verbose) {
-							System.out.println("Items found in queue!");
+							System.out.println("Take: Items found in queue!");
 						}
 						Work x = _q.pop();
 						System.out.println("got "+ x._message+ " from: "+ x._sender);
 						// Processing code
-						Work processedWork = new Work( x._id, x._message, x._sender, x._receiver);
-						System.out.println(processedWork._message);
-						
-						int VowelCount = processedWork.calculateVowels(processedWork._message);
-						processedWork.updateVowelsCount(VowelCount);
-						_pq.add(processedWork);
+						x.calculateVowels();
+						_pq.add(x);
 					} else {
 						// Keep checking the queue to process
 						if (_verbose) {
