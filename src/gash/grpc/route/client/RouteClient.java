@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import com.google.protobuf.ByteString;
 
@@ -62,7 +63,17 @@ public class RouteClient {
 		return rtn;
 	}
 
-	private static final Route constructMessage(int mID, String path, String payload) {
+	public static String createRandomWord(int len) {
+        String name = "";
+        for (int i = 0; i < len; i++) {
+            int v = 1 + (int) (Math.random() * 26);
+            char c = (char) (v + (i == 0 ? 'A' : 'a') - 1);
+            name += c;
+        }
+        return name;
+    }
+
+	private static final Route constructMessage(int mID, String path) {
 		Route.Builder bld = Route.newBuilder();
 		bld.setId(mID);
 		bld.setOrigin(RouteClient.clientID);
@@ -70,6 +81,7 @@ public class RouteClient {
 		bld.setDestination(dest_port);
 		bld.setType("regular");
 
+		String payload = createRandomWord(10);
 		byte[] hello = payload.getBytes();
 		bld.setPayload(ByteString.copyFrom(hello));
 
@@ -115,14 +127,6 @@ public class RouteClient {
 		qp = new QueuePuller(clientID, port);
 		qp.start(true);
 
-		final int I = 10;
-		for (int i = 0; i < I; i++) {
-			var msg = RouteClient.constructMessage(i, "/to/somewhere", "hello");
-			
-			// blocking!
-			var r = stub.request(msg);
-			response(r);
-		}
 		// Todo: Collect all 10 requests in an array, fire them together to the server.
 		// If requests are more than 50, batch it and do the same
 
@@ -139,7 +143,15 @@ public class RouteClient {
 		// });
 		while (true) {
 			try {
-				Thread.sleep(200);
+				final int I = 1;
+				for (int i = 0; i < I; i++) {
+					var msg = RouteClient.constructMessage(i, "/to/somewhere");
+					
+					// blocking!
+					var r = stub.request(msg);
+					response(r);
+				}
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}

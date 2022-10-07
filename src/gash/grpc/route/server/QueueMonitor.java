@@ -210,10 +210,9 @@ public class QueueMonitor {
 						_pq.add(x);
 					} else {
 						// Keep checking the queue to process
-						if (_verbose) {
-
-							System.out.println("Take: No items found in queue");
-						}
+						// if (_verbose) {
+						// 	System.out.println("Take: No items found in queue");
+						// }
 						Thread.sleep(sleepTime);
 					}
 				} catch (Exception e) {
