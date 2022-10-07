@@ -13,7 +13,6 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import route.WorkItem;
-import route.PollingServiceGrpc.PollingServiceImplBase;
 import route.RouteServiceGrpc.RouteServiceImplBase;
 
 /**

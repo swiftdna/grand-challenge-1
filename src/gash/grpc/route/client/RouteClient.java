@@ -12,6 +12,7 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 import io.netty.handler.ssl.SupportedCipherSuiteFilter;
 import route.Route;
 import route.RouteServiceGrpc;
@@ -93,7 +94,24 @@ public class RouteClient {
 		var payload = new String(reply.getPayload().toByteArray());
 		System.out.println("reply: " + reply.getId() + ", from: " + reply.getOrigin() + ", payload: " + payload);
 	}
-	
+
+	public static StreamObserver<route.Route> getServerResponseObserver(){
+		StreamObserver<route.Route> observer = new StreamObserver<route.Route> (){
+		   @Override
+		   public void onNext(Route msg) {
+			System.out.println("Server returned following route: " +msg);
+		   }
+		   @Override
+		   public void onError(Throwable t) {
+			System.out.println("Error while reading response fromServer: " + t);
+		   }
+		   @Override
+		   public void onCompleted() {
+			System.out.println("Server returned");
+		   }
+		};
+		return observer;
+	}
 	public static void main(String[] args) {
 
 		// Get properties from file and override the variables
@@ -120,19 +138,27 @@ public class RouteClient {
 			}
 		}
 
-		ManagedChannel ch = ManagedChannelBuilder.forAddress("localhost", RouteClient.port).usePlaintext().build();
-		RouteServiceGrpc.RouteServiceBlockingStub stub = RouteServiceGrpc.newBlockingStub(ch);
-
 		// Start Queue Puller
 		qp = new QueuePuller(clientID, port);
 		qp.start(true);
 
-		// Todo: Collect all 10 requests in an array, fire them together to the server.
-		// If requests are more than 50, batch it and do the same
+		//non-blocking stub
+		ManagedChannel ch = ManagedChannelBuilder.forAddress("localhost", RouteClient.port).usePlaintext().build();
+		RouteServiceGrpc.RouteServiceStub asyncstub = RouteServiceGrpc.newStub(ch);
 
-		// Held until all the 10 requests are responded
-		// ch.shutdown();
-
+		while (true) {
+			try {
+				final int I = 1;
+				for (int i = 0; i < I; i++) {
+					var msg = RouteClient.constructMessage(i, "/to/somewhere");
+					System.out.println("Sending request.. " + i);
+					asyncstub.request(msg,getServerResponseObserver());
+				}
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		// Runtime.getRuntime().addShutdownHook(new Thread() {
 		// 	@Override
 		// 	public void run() {
@@ -141,20 +167,9 @@ public class RouteClient {
 		// 		ch.shutdown();
 		// 	}
 		// });
-		while (true) {
-			try {
-				final int I = 1;
-				for (int i = 0; i < I; i++) {
-					var msg = RouteClient.constructMessage(i, "/to/somewhere");
-					
-					// blocking!
-					var r = stub.request(msg);
-					response(r);
-				}
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		}
+		// Held until all the 10 requests are responded
+		// ch.shutdown();
+		
 	}
 }
+
