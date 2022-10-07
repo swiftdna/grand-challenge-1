@@ -3,13 +3,17 @@ package gash.grpc.route.server;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 import com.google.protobuf.ByteString;
 
+import gash.grpc.route.server.QueueMonitor.Work;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
+import route.WorkItem;
+import route.PollingServiceGrpc.PollingServiceImplBase;
 import route.RouteServiceGrpc.RouteServiceImplBase;
 
 /**
@@ -27,6 +31,7 @@ import route.RouteServiceGrpc.RouteServiceImplBase;
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
 public class RouteServerImpl extends RouteServiceImplBase {
 	private Server svr;
 	private static QueueMonitor qm;
@@ -64,7 +69,6 @@ public class RouteServerImpl extends RouteServiceImplBase {
 	 * @return
 	 */
 	protected ByteString process(route.Route msg) {
-
 		// TODO placeholder
 		String content = new String(msg.getPayload().toByteArray());
 		System.out.println("-- got: " + msg.getOrigin() +  ", to: " + msg.getDestination() + ", path: " + msg.getPath() + ", with: " + content);
@@ -77,6 +81,12 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		byte[] raw = blank.getBytes();
 
 		return ByteString.copyFrom(raw);
+	}
+
+	protected ArrayList<WorkItem> processPolling(route.Route msg) {
+		System.out.println("msg_id -> " + msg.getId());
+		System.out.println("Should check queue");
+		return qm.fetch(msg);
 	}
 
 	public static void main(String[] args) throws Exception {
@@ -145,7 +155,12 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		builder.setPath(request.getPath());
 
 		// do the work and reply
-		builder.setPayload(process(request));
+		if (request.getType().equals("queue_poll")) {
+			ArrayList<WorkItem> items = processPolling(request);
+			builder.addAllDatapacket(items);
+		} else {
+			builder.setPayload(process(request));
+		}
 		route.Route rtn = builder.build();
 		responseObserver.onNext(rtn);
 		responseObserver.onCompleted();
