@@ -1,6 +1,10 @@
 package gash.grpc.route.server;
 
+import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingDeque;
+
+import route.Route;
+import route.WorkItem;
 
 public class QueueMonitor {
     // private static final int sMaxWork = 10;
@@ -42,7 +46,7 @@ public class QueueMonitor {
 					_take._isRunning = false;
 				}
 				if (_verbose)
-					System.out.println("--> waiting: " + _queue.size());
+					System.out.println("--> listening with current queue size: " + _queue.size());
 				Thread.sleep(sleepTime);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
@@ -58,6 +62,34 @@ public class QueueMonitor {
 		String content = new String(msg.getPayload().toByteArray());
 		Work input_work = new Work((int) msg.getId(), content, (int)msg.getOrigin(), (int)msg.getDestination());
 		_queue.add(input_work);
+	}
+
+	// public ArrayList<WorkItem.Builder> fetch(route.PollingRequest msg) {
+	public ArrayList<WorkItem> fetch(route.Route msg) {
+		// Extract sender id
+		long senderID = msg.getOrigin();
+		int length = _completedqueue.size();
+		ArrayList<WorkItem> workItems = new ArrayList<WorkItem>();
+		// WorkItem.Builder builder = WorkItem.newBuilder();
+		// ArrayList<Work> workItems = new ArrayList<Work>();
+		while (length > 0) {
+			Work w = _completedqueue.pop();
+			if (w._receiver == (int)senderID) {
+				WorkItem.Builder workBuilder = WorkItem.newBuilder();
+				workBuilder.setId(w._id);
+				workBuilder.setOrigin(w._sender);
+				workBuilder.setMessage(w._message);
+				workBuilder.setDestination(w._receiver);
+				workBuilder.setVowels(w._vowels);
+				// workItems.add(workBuilder);
+				workItems.add(workBuilder.build());
+			} else {
+				// If it doesn't belong to the requesting client, then add it back
+				_completedqueue.add(w);
+			}
+			length--;
+		}
+		return workItems;
 	}
 
 	/**
@@ -178,10 +210,9 @@ public class QueueMonitor {
 						_pq.add(x);
 					} else {
 						// Keep checking the queue to process
-						if (_verbose) {
-
-							System.out.println("Take: No items found in queue");
-						}
+						// if (_verbose) {
+						// 	System.out.println("Take: No items found in queue");
+						// }
 						Thread.sleep(sleepTime);
 					}
 				} catch (Exception e) {

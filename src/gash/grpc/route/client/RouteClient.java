@@ -1,13 +1,19 @@
 package gash.grpc.route.client;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
+import io.netty.handler.ssl.SupportedCipherSuiteFilter;
 import route.Route;
 import route.RouteServiceGrpc;
 
@@ -30,14 +36,53 @@ import route.RouteServiceGrpc;
 public class RouteClient {
 	private static long clientID = 501;
 	private static int port = 2345;
+	private static int dest_port = 201;
+	private static QueuePuller qp;
 
-	private static final Route constructMessage(int mID, String path, String payload) {
+	/**
+	* Configuration of the server's identity, port, and role
+	*/
+	private static Properties getConfiguration(final File path) throws IOException {
+		if (!path.exists())
+			throw new IOException("missing file");
+
+		Properties rtn = new Properties();
+		FileInputStream fis = null;
+		try {
+			fis = new FileInputStream(path);
+			rtn.load(fis);
+		} finally {
+			if (fis != null) {
+				try {
+					fis.close();
+				} catch (IOException e) {
+					// ignore
+				}
+			}
+		}
+
+		return rtn;
+	}
+
+	public static String createRandomWord(int len) {
+        String name = "";
+        for (int i = 0; i < len; i++) {
+            int v = 1 + (int) (Math.random() * 26);
+            char c = (char) (v + (i == 0 ? 'A' : 'a') - 1);
+            name += c;
+        }
+        return name;
+    }
+
+	private static final Route constructMessage(int mID, String path) {
 		Route.Builder bld = Route.newBuilder();
 		bld.setId(mID);
 		bld.setOrigin(RouteClient.clientID);
 		bld.setPath(path);
-		bld.setDestination(201);
+		bld.setDestination(dest_port);
+		bld.setType("regular");
 
+		String payload = createRandomWord(10);
 		byte[] hello = payload.getBytes();
 		bld.setPayload(ByteString.copyFrom(hello));
 
@@ -68,31 +113,63 @@ public class RouteClient {
 		return observer;
 	}
 	public static void main(String[] args) {
-		ManagedChannel ch = ManagedChannelBuilder.forAddress("localhost", RouteClient.port).usePlaintext().build();
-		
-		//non-blocking stub
-		RouteServiceGrpc.RouteServiceStub asyncstub = RouteServiceGrpc.newStub(ch);
-		
-		final int I = 10;
-		for (int i = 0; i < I; i++) {
-			var msg = RouteClient.constructMessage(i, "/to/somewhere", "there are seven!");
-			System.out.println("before response observer ");
-			asyncstub.request(msg,getServerResponseObserver());
 
-			// response(r);
-		}
-		
-		while (true) {
-			System.out.println("Checking..");
+		// Get properties from file and override the variables
+		String path = args[0];
+		if (!path.isEmpty()) {
 			try {
-				Thread.sleep(1000);
-			} catch(Exception e) {
+				Properties conf = getConfiguration(new File(path));
+				String portStr = conf.getProperty("client.port");
+				if (portStr == null)
+					throw new RuntimeException("Server ID missing");
+				port = Integer.parseInt(portStr);
+				String destPortStr = conf.getProperty("client.dest");
+				if (destPortStr == null)
+					throw new RuntimeException("Destination ID missing");
+				dest_port = Integer.parseInt(destPortStr);
+				String clientIDStr = conf.getProperty("client.id");
+				if (clientIDStr == null)
+					throw new RuntimeException("Client ID missing");
+				clientID = Long.parseLong(clientIDStr);
+				System.out.println("Propery files overwritten!");
+			} catch (IOException e) {
+				// TODO better error message
 				e.printStackTrace();
 			}
 		}
 
+		// Start Queue Puller
+		qp = new QueuePuller(clientID, port);
+		qp.start(true);
+
+		//non-blocking stub
+		ManagedChannel ch = ManagedChannelBuilder.forAddress("localhost", RouteClient.port).usePlaintext().build();
+		RouteServiceGrpc.RouteServiceStub asyncstub = RouteServiceGrpc.newStub(ch);
+
+		while (true) {
+			try {
+				final int I = 1;
+				for (int i = 0; i < I; i++) {
+					var msg = RouteClient.constructMessage(i, "/to/somewhere");
+					System.out.println("Sending request.. " + i);
+					asyncstub.request(msg,getServerResponseObserver());
+				}
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		// Runtime.getRuntime().addShutdownHook(new Thread() {
+		// 	@Override
+		// 	public void run() {
+		// 		// RouteClient.this.stop();
+		// 		qp.shutdown();
+		// 		ch.shutdown();
+		// 	}
+		// });
 		// Held until all the 10 requests are responded
 		// ch.shutdown();
+		
 	}
 }
 
