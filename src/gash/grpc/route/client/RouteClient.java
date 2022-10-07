@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 import route.Route;
 import route.RouteServiceGrpc;
 
@@ -48,26 +49,50 @@ public class RouteClient {
 		var payload = new String(reply.getPayload().toByteArray());
 		System.out.println("reply: " + reply.getId() + ", from: " + reply.getOrigin() + ", payload: " + payload);
 	}
-	
+
+	public static StreamObserver<route.Route> getServerResponseObserver(){
+		StreamObserver<route.Route> observer = new StreamObserver<route.Route> (){
+		   @Override
+		   public void onNext(Route msg) {
+			System.out.println("Server returned following route: " +msg);
+		   }
+		   @Override
+		   public void onError(Throwable t) {
+			System.out.println("Error while reading response fromServer: " + t);
+		   }
+		   @Override
+		   public void onCompleted() {
+			System.out.println("Server returned");
+		   }
+		};
+		return observer;
+	}
 	public static void main(String[] args) {
 		ManagedChannel ch = ManagedChannelBuilder.forAddress("localhost", RouteClient.port).usePlaintext().build();
-		RouteServiceGrpc.RouteServiceBlockingStub stub = RouteServiceGrpc.newBlockingStub(ch);
-
+		
+		//non-blocking stub
+		RouteServiceGrpc.RouteServiceStub asyncstub = RouteServiceGrpc.newStub(ch);
+		
 		final int I = 10;
 		for (int i = 0; i < I; i++) {
-			var msg = RouteClient.constructMessage(i, "/to/somewhere", "hello");
-			
-			// blocking!
-			var r = stub.request(msg);
-			response(r);
+			var msg = RouteClient.constructMessage(i, "/to/somewhere", "there are seven!");
+			System.out.println("before response observer ");
+			asyncstub.request(msg,getServerResponseObserver());
+
+			// response(r);
 		}
-		// Todo: Collect all 10 requests in an array, fire them together to the server.
-		// If requests are more than 50, batch it and do the same
-
-		// Listener (thread) that will poll the queue continuously for updates
-
+		
+		while (true) {
+			System.out.println("Checking..");
+			try {
+				Thread.sleep(1000);
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
 
 		// Held until all the 10 requests are responded
-		ch.shutdown();
+		// ch.shutdown();
 	}
 }
+
