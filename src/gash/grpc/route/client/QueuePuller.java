@@ -66,6 +66,7 @@ public class QueuePuller {
         private void checkData() {
             ManagedChannel cch = ManagedChannelBuilder.forAddress(_host, _port).usePlaintext().build();
 		    RouteServiceGrpc.RouteServiceBlockingStub cstub = RouteServiceGrpc.newBlockingStub(cch);
+		    System.out.println(_host+ _port+"checkdataßa");
 
             var msg = constructQueueCheckMessage(999, "/to/queue");
 			

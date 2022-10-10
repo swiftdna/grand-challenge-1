@@ -148,9 +148,9 @@ public class RouteClient {
 		qp.start(true);
 
 		//non-blocking stub
-		ManagedChannel ch = ManagedChannelBuilder.forAddress(host, RouteClient.port).usePlaintext().build();
+		ManagedChannel ch = ManagedChannelBuilder.forAddress(RouteClient.host, RouteClient.port).usePlaintext().build();
 		RouteServiceGrpc.RouteServiceStub asyncstub = RouteServiceGrpc.newStub(ch);
-
+		System.out.println(RouteClient.host+ RouteClient.port);
 		while (true) {
 			try {
 				final int I = 1;
