@@ -37,6 +37,7 @@ public class RouteClient {
 	private static long clientID = 501;
 	private static int port = 2345;
 	private static int dest_port = 201;
+	private static String host = "localhost";
 	private static QueuePuller qp;
 
 	/**
@@ -99,7 +100,8 @@ public class RouteClient {
 		StreamObserver<route.Route> observer = new StreamObserver<route.Route> (){
 		   @Override
 		   public void onNext(Route msg) {
-			System.out.println("Server returned following route: " +msg);
+			String payload = new String(msg.getPayload().toByteArray());
+			System.out.println("Server returned following route: " +payload);
 		   }
 		   @Override
 		   public void onError(Throwable t) {
@@ -123,6 +125,9 @@ public class RouteClient {
 				if (portStr == null)
 					throw new RuntimeException("Server ID missing");
 				port = Integer.parseInt(portStr);
+				host = conf.getProperty("client.host");
+				if (host == null)
+					throw new RuntimeException("Server Port missing");	
 				String destPortStr = conf.getProperty("client.dest");
 				if (destPortStr == null)
 					throw new RuntimeException("Destination ID missing");
@@ -139,11 +144,11 @@ public class RouteClient {
 		}
 
 		// Start Queue Puller
-		qp = new QueuePuller(clientID, port);
+		qp = new QueuePuller(clientID, host, port);
 		qp.start(true);
 
 		//non-blocking stub
-		ManagedChannel ch = ManagedChannelBuilder.forAddress("localhost", RouteClient.port).usePlaintext().build();
+		ManagedChannel ch = ManagedChannelBuilder.forAddress(host, RouteClient.port).usePlaintext().build();
 		RouteServiceGrpc.RouteServiceStub asyncstub = RouteServiceGrpc.newStub(ch);
 
 		while (true) {

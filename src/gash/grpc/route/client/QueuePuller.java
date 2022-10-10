@@ -10,11 +10,13 @@ import route.RouteServiceGrpc;
 public class QueuePuller {
     private static final long sleepTime = 5000;
     private static long _clientID;
+    private static String _host;
     private static int _port;
 	private Puller _puller;
     
-    public QueuePuller(long clientID, int port) {
+    public QueuePuller(long clientID, String host, int port) {
         _clientID = clientID;
+        _host = host;
         _port = port;
     }
     public void start(boolean verbose) {
@@ -62,7 +64,7 @@ public class QueuePuller {
         }
 
         private void checkData() {
-            ManagedChannel cch = ManagedChannelBuilder.forAddress("localhost", _port).usePlaintext().build();
+            ManagedChannel cch = ManagedChannelBuilder.forAddress(_host, _port).usePlaintext().build();
 		    RouteServiceGrpc.RouteServiceBlockingStub cstub = RouteServiceGrpc.newBlockingStub(cch);
 
             var msg = constructQueueCheckMessage(999, "/to/queue");
