@@ -15,7 +15,7 @@ public class QueueMonitor {
 	private Put _put;
 	private Take _take;
 	private Monitor _monitor;
-
+	public Thread takeObject[] = new Thread[10];
 	public void start(boolean verbose) {
 		_verbose = verbose;
 		setup();
@@ -26,7 +26,13 @@ public class QueueMonitor {
 		_queue = new LinkedBlockingDeque<Work>();
 		_completedqueue = new LinkedBlockingDeque<Work>();
 		_put = new Put(_queue, _verbose);
-		_take = new Take(_queue, _completedqueue, _verbose);
+		
+		for (int i = 0; i < 10; i++) {
+            takeObject[i] 
+                = new Thread(new Take(_queue, _completedqueue, _verbose));
+           // object.start();
+        }
+		//_take = new Take(_queue, _completedqueue, _verbose);
 		_monitor = new Monitor(_put, _take, _completedqueue, _verbose);
 	}
 
@@ -34,11 +40,19 @@ public class QueueMonitor {
 		if (_verbose)
 			System.out.println("--> starting queue monitor ");
 		_put.start();
-		_take.start();
+		//_take.start();
+		for (int i = 0; i < 10; i++) {
+			if (takeObject[i]!= null){
+				takeObject[i].start();
+
+			}
+        }
 		_monitor.start();
+		
+		
 
 		int maxWaiting = 5000;
-		while (_take._isRunning) {
+		while (_take!=null && _take._isRunning) {
 			try {
 				maxWaiting--;
 				if (maxWaiting == 0) {
@@ -157,6 +171,7 @@ public class QueueMonitor {
 			while (_isRunning) {
 				// _q.add(new Work(_genID, _genID));
 				try {
+					
 					Thread.sleep(sleepTime); // simulate variability
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -198,23 +213,28 @@ public class QueueMonitor {
 		public void run() {
 			while (_isRunning) {
 				try {
-					if (_q.size() > 0) {
+					// System.out.println(
+					// 	"Thread " + Thread.currentThread().getId()
+					// 	+ " is running");
+						var CurrentThreadID = Thread.currentThread().getId();
+					//if (_q.size() > 0) {
 						// Take and process it
 						if (_verbose) {
 							System.out.println("Take: Items found in queue!");
 						}
-						Work x = _q.pop();
-						System.out.println("got "+ x._message+ " from: "+ x._sender);
+						Work x = _q.take();
+						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ CurrentThreadID);
 						// Processing code
 						x.calculateVowels();
 						_pq.add(x);
-					} else {
-						// Keep checking the queue to process
-						// if (_verbose) {
-						// 	System.out.println("Take: No items found in queue");
-						// }
-						Thread.sleep(sleepTime);
-					}
+				//	} 
+					// else {
+					// 	// Keep checking the queue to process
+					// 	// if (_verbose) {
+					// 	// 	System.out.println("Take: No items found in queue");
+					// 	// }
+					// 	Thread.sleep(sleepTime);
+					// }
 				} catch (Exception e) {
 					// ignore - part of the test
 					e.printStackTrace();

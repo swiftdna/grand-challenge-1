@@ -153,13 +153,13 @@ public class RouteClient {
 		System.out.println(RouteClient.host+ RouteClient.port);
 		while (true) {
 			try {
-				final int I = 1;
+				final int I = 1000;
 				for (int i = 0; i < I; i++) {
 					var msg = RouteClient.constructMessage(i, "/to/somewhere");
 					System.out.println("Sending request.. " + i);
 					asyncstub.request(msg,getServerResponseObserver());
 				}
-				Thread.sleep(1000);
+				Thread.sleep(3000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
