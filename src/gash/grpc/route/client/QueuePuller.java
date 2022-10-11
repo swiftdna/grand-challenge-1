@@ -58,7 +58,7 @@ public class QueuePuller {
             // TODO handle the reply/response from the server	
             // var payload = new String(reply.getPayload().toByteArray());
             List<route.WorkItem> pl = reply.getDatapacketList();
-            System.out.println("Q poll reply pl size: "+pl.size());
+            System.out.println("Q poll reply pl size: " + pl.size());
             System.out.println(Arrays.toString(pl.toArray()));
             System.out.println("Q poll reply: from: " + reply.getOrigin());
         }
