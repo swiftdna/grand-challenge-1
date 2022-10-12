@@ -9,15 +9,23 @@ import route.WorkItem;
 public class QueueMonitor {
     // private static final int sMaxWork = 10;
     private static final int sleepTime = 200;
+	private static int _num_threads;
 	private boolean _verbose = false;
 	private LinkedBlockingDeque<Work> _queue;
 	private LinkedBlockingDeque<Work> _completedqueue;
 	private Put _put;
 	private Take _take;
 	private Monitor _monitor;
-	public Thread takeObject[] = new Thread[10];
-	public void start(boolean verbose) {
+	public Thread threadPool[];
+	public void start(boolean verbose, int num_threads) {
 		_verbose = verbose;
+		if (num_threads > 0) {
+			_num_threads = num_threads;
+		} else {
+			// default threads
+			_num_threads = 10;
+		}
+		threadPool = new Thread[_num_threads];
 		setup();
 		listen();
 	}
@@ -27,13 +35,11 @@ public class QueueMonitor {
 		_completedqueue = new LinkedBlockingDeque<Work>();
 		_put = new Put(_queue, _verbose);
 		
-		for (int i = 0; i < 10; i++) {
-            takeObject[i] 
-                = new Thread(new Take(_queue, _completedqueue, _verbose));
-           // object.start();
+		for (int i = 0; i < _num_threads; i++) {
+            threadPool[i] = new Thread(new Take(_queue, _completedqueue, _verbose));
         }
 		//_take = new Take(_queue, _completedqueue, _verbose);
-		_monitor = new Monitor(_put, _take, _completedqueue, _verbose);
+		_monitor = new Monitor(_put, _take, _queue, _completedqueue, _verbose);
 	}
 
 	public void listen() {
@@ -41,10 +47,12 @@ public class QueueMonitor {
 			System.out.println("--> starting queue monitor ");
 		_put.start();
 		//_take.start();
-		for (int i = 0; i < 10; i++) {
-			if (takeObject[i]!= null){
-				takeObject[i].start();
-
+		for (int i = 0; i < _num_threads; i++) {
+			if (threadPool[i] != null) {
+				if (_verbose) {
+					System.out.println("Starting take thread " + threadPool[i].getId());
+				}
+				threadPool[i].start();
 			}
         }
 		_monitor.start();
@@ -68,14 +76,10 @@ public class QueueMonitor {
 		}
 	}
 
-	public void hello() {
-		System.out.println("Hello dude!");
-	}
-
 	public void addWork(route.Route msg) {
 		String content = new String(msg.getPayload().toByteArray());
 		Work input_work = new Work((int) msg.getId(), content, (int)msg.getOrigin(), (int)msg.getDestination());
-		_queue.add(input_work);
+		_put.add(input_work);
 	}
 
 	// public ArrayList<WorkItem.Builder> fetch(route.PollingRequest msg) {
@@ -154,9 +158,6 @@ public class QueueMonitor {
 		public Put(LinkedBlockingDeque<Work> q, boolean verbose) {
 			_verbose = verbose;
 			_q = q;
-
-			// Mock put items here
-			// _q.add(new Work(1,"Hello", 2, 3));
 		}
 
 		public void shutdown() {
@@ -166,12 +167,15 @@ public class QueueMonitor {
 			_isRunning = false;
 		}
 
+		public void add(Work w) {
+			_q.add(w);
+		}
+
 		@Override
 		public void run() {
 			while (_isRunning) {
 				// _q.add(new Work(_genID, _genID));
 				try {
-					
 					Thread.sleep(sleepTime); // simulate variability
 				} catch (InterruptedException e) {
 					e.printStackTrace();
@@ -211,30 +215,16 @@ public class QueueMonitor {
 
 		@Override
 		public void run() {
+			long currentThreadID = Thread.currentThread().getId();
 			while (_isRunning) {
 				try {
-					// System.out.println(
-					// 	"Thread " + Thread.currentThread().getId()
-					// 	+ " is running");
-						var CurrentThreadID = Thread.currentThread().getId();
-					//if (_q.size() > 0) {
-						// Take and process it
-						if (_verbose) {
-							System.out.println("Take: Items found in queue!");
-						}
-						Work x = _q.take();
-						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ CurrentThreadID);
-						// Processing code
-						x.calculateVowels();
-						_pq.add(x);
-				//	} 
-					// else {
-					// 	// Keep checking the queue to process
-					// 	// if (_verbose) {
-					// 	// 	System.out.println("Take: No items found in queue");
-					// 	// }
-					// 	Thread.sleep(sleepTime);
-					// }
+					Work x = _q.take();
+					if (_verbose) {
+						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ currentThreadID);
+					}
+					// Processing code
+					x.calculateVowels();
+					_pq.add(x);
 				} catch (Exception e) {
 					// ignore - part of the test
 					e.printStackTrace();
@@ -242,7 +232,7 @@ public class QueueMonitor {
 			}
 
 			if (_verbose)
-				System.out.println("--> Take is done");
+				System.out.println("--> Bye from Take " + currentThreadID);
 		}
 	}
 
@@ -257,13 +247,15 @@ public class QueueMonitor {
 		public Put _put;
 		public Take _take;
 		public boolean _isRunning = true;
+		public LinkedBlockingDeque<Work> _pq;
 		public LinkedBlockingDeque<Work> _cq;
 
-		public Monitor(Put p, Take t, LinkedBlockingDeque<Work> cq,boolean verbose) {
+		public Monitor(Put p, Take t, LinkedBlockingDeque<Work> pq, LinkedBlockingDeque<Work> cq,boolean verbose) {
 			_verbose = verbose;
 			_put = p;
 			_take = t;
 			_cq = cq;
+			_pq = pq;
 		}
 
 		public void shutdown() {
@@ -279,8 +271,9 @@ public class QueueMonitor {
 		public void run() {
 			while (_isRunning) {
 				try {
+					// Scale up or down the thread pool size based on the work load
 					if (_cq.size() > 0) {
-						System.out.println("Completed items: " + _cq.size());
+						System.out.println("Pending Queue: " + _pq.size() + " Completed items: " + _cq.size());
 					}
 					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
@@ -297,6 +290,6 @@ public class QueueMonitor {
 	 */
 	public static void main(String[] args) {
 		QueueMonitor qm = new QueueMonitor();
-		qm.start(true);
+		qm.start(true, 5);
 	}    
 }

@@ -84,8 +84,8 @@ public class RouteClient {
 		bld.setType("regular");
 
 		String payload = createRandomWord(10);
-		byte[] hello = payload.getBytes();
-		bld.setPayload(ByteString.copyFrom(hello));
+		byte[] randomPayload = payload.getBytes();
+		bld.setPayload(ByteString.copyFrom(randomPayload));
 
 		return bld.build();
 	}

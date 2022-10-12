@@ -116,7 +116,7 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		svr.start();
 		System.out.println("-- starting queue monitor");
 		new Thread(() -> {
-			qm.start(true);
+			qm.start(false, 5);
 		}).start();
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
