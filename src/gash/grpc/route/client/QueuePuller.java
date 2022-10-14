@@ -14,7 +14,9 @@ public class QueuePuller {
     private static long _clientID;
     private static String _host;
     private static int _port;
+    private static int _msgsReceived = 0;
 	private Puller _puller;
+    // private static boolean _verbose = false;
     
     public QueuePuller(long clientID, String host, int port) {
         _clientID = clientID;
@@ -31,8 +33,12 @@ public class QueuePuller {
         _puller.shutdown();
     }
 
+    public int getReceivedMsgsCount() {
+        return _msgsReceived;
+    }
+
     public static final class Puller extends Thread {
-		public boolean _verbose = false;
+		public static boolean _verbose = false;
 		public boolean _isRunning = true;
 
 		public Puller(boolean verbose) {
@@ -61,9 +67,12 @@ public class QueuePuller {
             // var payload = new String(reply.getPayload().toByteArray());
             List<route.WorkItem> pl = reply.getDatapacketList();
             // System.out.println("Q poll reply pl size: " + pl.size());
+            _msgsReceived += pl.size();
             for (WorkItem wi:pl) {
                 // System.out.println("-- q data --> got "+ wi.getId() + " from "+ wi.getOrigin()+ " data: "+ wi.getMessage() +" count: "+ wi.getVowels());
-                System.out.println("Msg from "+ wi.getOrigin()+ " data: "+ wi.getMessage() +" count: "+ wi.getVowels());
+                if (_verbose) {
+                    System.out.println("Msg from "+ wi.getOrigin()+ " data: "+ wi.getMessage() +" count: "+ wi.getVowels());
+                }
             }
         }
 
@@ -83,7 +92,9 @@ public class QueuePuller {
 			while (_isRunning) {
 				try {
                     // Pull items from server queue and print
-                    System.out.println("Puller checking..");
+                    if (_verbose) {
+                        System.out.println("Puller checking..");
+                    }
                     checkData();
 					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {

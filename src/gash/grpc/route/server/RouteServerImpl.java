@@ -34,7 +34,8 @@ import route.RouteServiceGrpc.RouteServiceImplBase;
 public class RouteServerImpl extends RouteServiceImplBase {
 	private Server svr;
 	private static QueueMonitor qm;
-
+	private static int rcvdRequests = 0;
+	private static int prcsdRequests = 0;
 	/**
 	* Configuration of the server's identity, port, and role
 	*/
@@ -71,7 +72,7 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		// TODO placeholder
 		String content = new String(msg.getPayload().toByteArray());
 		// System.out.println("-- got: " + msg.getOrigin() +  ", to: " + msg.getDestination() + ", path: " + msg.getPath() + ", with: " + content);
-
+		rcvdRequests += 1;
 		// Add item to queue
 		qm.addWork(msg);
 
@@ -84,7 +85,7 @@ public class RouteServerImpl extends RouteServiceImplBase {
 
 	protected ArrayList<WorkItem> processPolling(route.Route msg) {
 		// System.out.println("msg_id -> " + msg.getId());
-		System.out.println("Checking completed queue for " + msg.getOrigin());
+		// System.out.println("Checking completed queue for " + msg.getOrigin());
 		return qm.fetch(msg);
 	}
 
@@ -117,6 +118,20 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		System.out.println("-- starting queue monitor");
 		new Thread(() -> {
 			qm.start(false, 5);
+		}).start();
+
+		new Thread(() -> {
+			while (true) {
+				try {
+					// Get pending pickup count
+					int pendingPickupCount = qm.getPendingPickupCount();
+					System.out.print("\rRequests received: " + rcvdRequests +" processed: "+ prcsdRequests +" pickup pending: " + pendingPickupCount + "\r");
+					System.out.flush();
+					Thread.sleep(1000);
+				} catch(Exception e) {
+					e.printStackTrace();
+				}
+			}
 		}).start();
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -156,6 +171,7 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		// do the work and reply
 		if (request.getType().equals("queue_poll")) {
 			ArrayList<WorkItem> items = processPolling(request);
+			prcsdRequests += items.size();
 			builder.addAllDatapacket(items);
 		} else {
 			builder.setPayload(process(request));

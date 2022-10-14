@@ -10,6 +10,7 @@ public class QueueMonitor {
     // private static final int sMaxWork = 10;
     private static final int sleepTime = 200;
 	private static int _num_threads;
+	private static int _pendingPickupCount = 0;
 	private boolean _verbose = false;
 	private LinkedBlockingDeque<Work> _queue;
 	private LinkedBlockingDeque<Work> _completedqueue;
@@ -80,6 +81,10 @@ public class QueueMonitor {
 		String content = new String(msg.getPayload().toByteArray());
 		Work input_work = new Work((int) msg.getId(), content, (int)msg.getOrigin(), (int)msg.getDestination());
 		_put.add(input_work);
+	}
+
+	public int getPendingPickupCount() {
+		return _pendingPickupCount;
 	}
 
 	// public ArrayList<WorkItem.Builder> fetch(route.PollingRequest msg) {
@@ -272,7 +277,10 @@ public class QueueMonitor {
 			while (_isRunning) {
 				try {
 					// Scale up or down the thread pool size based on the work load
-					System.out.println("Pending Queue: " + _pq.size() + " Completed items: " + _cq.size());
+					if (_verbose) {
+						System.out.println("Pending Queue: " + _pq.size() + " Completed items: " + _cq.size());
+					}
+					_pendingPickupCount = _cq.size();
 					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
