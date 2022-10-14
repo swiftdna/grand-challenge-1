@@ -101,7 +101,8 @@ public class RouteClient {
 		   @Override
 		   public void onNext(Route msg) {
 			String payload = new String(msg.getPayload().toByteArray());
-			System.out.println("Server returned following route: " +payload);
+			// System.out.println("Server returned following route: " +payload);
+			response(msg);
 		   }
 		   @Override
 		   public void onError(Throwable t) {
@@ -109,7 +110,7 @@ public class RouteClient {
 		   }
 		   @Override
 		   public void onCompleted() {
-			System.out.println("Server returned");
+			// System.out.println("Server returned");
 		   }
 		};
 		return observer;
@@ -156,9 +157,10 @@ public class RouteClient {
 				final int I = 1000;
 				for (int i = 0; i < I; i++) {
 					var msg = RouteClient.constructMessage(i, "/to/somewhere");
-					System.out.println("Sending request.. " + i);
+					// System.out.println("Sending request.. " + i);
 					asyncstub.request(msg,getServerResponseObserver());
 				}
+				System.out.println("Sent "+ I + " requests..");
 				Thread.sleep(3000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();

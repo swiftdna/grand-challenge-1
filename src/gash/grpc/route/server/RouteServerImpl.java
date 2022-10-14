@@ -70,7 +70,7 @@ public class RouteServerImpl extends RouteServiceImplBase {
 	protected ByteString process(route.Route msg) {
 		// TODO placeholder
 		String content = new String(msg.getPayload().toByteArray());
-		System.out.println("-- got: " + msg.getOrigin() +  ", to: " + msg.getDestination() + ", path: " + msg.getPath() + ", with: " + content);
+		// System.out.println("-- got: " + msg.getOrigin() +  ", to: " + msg.getDestination() + ", path: " + msg.getPath() + ", with: " + content);
 
 		// Add item to queue
 		qm.addWork(msg);
@@ -83,8 +83,8 @@ public class RouteServerImpl extends RouteServiceImplBase {
 	}
 
 	protected ArrayList<WorkItem> processPolling(route.Route msg) {
-		System.out.println("msg_id -> " + msg.getId());
-		System.out.println("Should check queue");
+		// System.out.println("msg_id -> " + msg.getId());
+		System.out.println("Checking completed queue for " + msg.getOrigin());
 		return qm.fetch(msg);
 	}
 

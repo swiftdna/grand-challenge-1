@@ -272,9 +272,7 @@ public class QueueMonitor {
 			while (_isRunning) {
 				try {
 					// Scale up or down the thread pool size based on the work load
-					if (_cq.size() > 0) {
-						System.out.println("Pending Queue: " + _pq.size() + " Completed items: " + _cq.size());
-					}
+					System.out.println("Pending Queue: " + _pq.size() + " Completed items: " + _cq.size());
 					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
 					e.printStackTrace();
