@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import route_pb2 as route__pb2
+from generated import route_pb2 as route__pb2
 
 
 class RouteServiceStub(object):
