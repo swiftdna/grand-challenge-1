@@ -5,6 +5,11 @@ import java.util.concurrent.LinkedBlockingDeque;
 
 import route.Route;
 import route.WorkItem;
+import java.util.HashMap;
+import java.util.Map;
+import java.io.File;
+import java.io.FileWriter; 
+import java.io.IOException; 
 
 public class QueueMonitor {
     // private static final int sMaxWork = 10;
@@ -18,6 +23,7 @@ public class QueueMonitor {
 	private Take _take;
 	private Monitor _monitor;
 	public Thread threadPool[];
+	public static Map<Long,Integer> map = new HashMap<>();
 	public void start(boolean verbose, int num_threads) {
 		_verbose = verbose;
 		if (num_threads > 0) {
@@ -221,11 +227,16 @@ public class QueueMonitor {
 		@Override
 		public void run() {
 			long currentThreadID = Thread.currentThread().getId();
+			
 			while (_isRunning) {
 				try {
+					int count = map.containsKey(currentThreadID) ? map.get(currentThreadID) : 0;
+					map.put(currentThreadID, count + 1);
 					Work x = _q.take();
 					if (_verbose) {
 						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ currentThreadID);
+						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ currentThreadID + "Thread Map:" + map);
+						
 					}
 					// Processing code
 					x.calculateVowels();
@@ -234,6 +245,21 @@ public class QueueMonitor {
 					// ignore - part of the test
 					e.printStackTrace();
 				}
+				try {
+					
+					FileWriter myWriter = new FileWriter("filename.txt");
+					for (Map.Entry<Long,Integer> entry : map.entrySet()) { 
+				   	// put key and value separated by a colon 
+				   		myWriter.write(entry.getKey() + ":" + entry.getValue()); 
+						System.out.println(entry.getKey()+"         "+entry.getValue());
+	 
+			   		} 
+					myWriter.close();
+					System.out.println("Successfully wrote to the file.");
+				  } catch (IOException e) {
+					System.out.println("An error occurred.");
+					e.printStackTrace();
+				  }
 			}
 
 			if (_verbose)
