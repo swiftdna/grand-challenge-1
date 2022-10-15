@@ -9,7 +9,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.io.File;
 import java.io.FileWriter; 
-import java.io.IOException; 
+import java.io.IOException;
+import java.security.spec.ECFieldF2m; 
 
 public class QueueMonitor {
     // private static final int sMaxWork = 10;
@@ -23,7 +24,7 @@ public class QueueMonitor {
 	private Take _take;
 	private Monitor _monitor;
 	public Thread threadPool[];
-	public static Map<Long,Integer> map = new HashMap<>();
+	public static Map<Long,Integer> overallThreadLoadMap = new HashMap<>();
 	public void start(boolean verbose, int num_threads) {
 		_verbose = verbose;
 		if (num_threads > 0) {
@@ -35,12 +36,24 @@ public class QueueMonitor {
 		threadPool = new Thread[_num_threads];
 		setup();
 		listen();
+
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			@Override
+			public void run() {
+				QueueMonitor.this.shutdown();
+			}
+		});
+	}
+
+	public void shutdown() {
+		_monitor.shutdown();
 	}
 
 	public void setup() {
 		_queue = new LinkedBlockingDeque<Work>();
 		_completedqueue = new LinkedBlockingDeque<Work>();
 		_put = new Put(_queue, _verbose);
+		_take = new Take(_queue, _completedqueue, _verbose);
 		
 		for (int i = 0; i < _num_threads; i++) {
             threadPool[i] = new Thread(new Take(_queue, _completedqueue, _verbose));
@@ -63,8 +76,6 @@ public class QueueMonitor {
 			}
         }
 		_monitor.start();
-		
-		
 
 		int maxWaiting = 5000;
 		while (_take!=null && _take._isRunning) {
@@ -149,6 +160,11 @@ public class QueueMonitor {
 				   count ++;
 				}
 			}
+			try {
+				Thread.sleep(1000);
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
 			_vowels = count;
 		}
 	}
@@ -222,6 +238,24 @@ public class QueueMonitor {
 				System.out.println("Take: shutting down..");
 			}
 			_isRunning = false;
+			// Write the stats to file
+			writeOverallThreadLoad("overallThreadLoad.csv");
+		}
+
+		public void writeOverallThreadLoad(String fileName) {
+			try {
+				FileWriter myWriter = new FileWriter(fileName);
+				for (Map.Entry<Long,Integer> entry : overallThreadLoadMap.entrySet()) { 
+				   // put key and value separated by a colon 
+					   myWriter.write("Thread "+entry.getKey() + ":" + entry.getValue()+"\n"); 
+					// System.out.println(entry.getKey()+"         "+entry.getValue());
+				   } 
+				myWriter.close();
+				// System.out.println("Successfully wrote to the file.");
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
 		}
 
 		@Override
@@ -230,13 +264,12 @@ public class QueueMonitor {
 			
 			while (_isRunning) {
 				try {
-					int count = map.containsKey(currentThreadID) ? map.get(currentThreadID) : 0;
-					map.put(currentThreadID, count + 1);
+					// Update overallThreadLoadMap
+					int count = overallThreadLoadMap.containsKey(currentThreadID) ? overallThreadLoadMap.get(currentThreadID) : 0;
+					overallThreadLoadMap.put(currentThreadID, count + 1);
 					Work x = _q.take();
 					if (_verbose) {
-						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ currentThreadID);
-						System.out.println("got "+ x._message+ " from: "+ x._sender + "processed by thread: "+ currentThreadID + "Thread Map:" + map);
-						
+						System.out.println("got "+ x._message+ " from: "+ x._sender + " processed by thread: "+ currentThreadID);
 					}
 					// Processing code
 					x.calculateVowels();
@@ -245,21 +278,6 @@ public class QueueMonitor {
 					// ignore - part of the test
 					e.printStackTrace();
 				}
-				try {
-					
-					FileWriter myWriter = new FileWriter("filename.txt");
-					for (Map.Entry<Long,Integer> entry : map.entrySet()) { 
-				   	// put key and value separated by a colon 
-				   		myWriter.write(entry.getKey() + ":" + entry.getValue()); 
-						System.out.println(entry.getKey()+"         "+entry.getValue());
-	 
-			   		} 
-					myWriter.close();
-					System.out.println("Successfully wrote to the file.");
-				  } catch (IOException e) {
-					System.out.println("An error occurred.");
-					e.printStackTrace();
-				  }
 			}
 
 			if (_verbose)

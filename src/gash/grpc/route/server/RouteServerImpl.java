@@ -117,22 +117,22 @@ public class RouteServerImpl extends RouteServiceImplBase {
 		svr.start();
 		System.out.println("-- starting queue monitor");
 		new Thread(() -> {
-			qm.start(false, 5);
+			qm.start(true, 500);
 		}).start();
 
-		new Thread(() -> {
-			while (true) {
-				try {
-					// Get pending pickup count
-					int pendingPickupCount = qm.getPendingPickupCount();
-					System.out.print("\rRequests received: " + rcvdRequests +" processed: "+ prcsdRequests +" pickup pending: " + pendingPickupCount + "\r");
-					System.out.flush();
-					Thread.sleep(1000);
-				} catch(Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}).start();
+		// new Thread(() -> {
+		// 	while (true) {
+		// 		try {
+		// 			// Get pending pickup count
+		// 			int pendingPickupCount = qm.getPendingPickupCount();
+		// 			System.out.print("\rRequests received: " + rcvdRequests +" processed: "+ prcsdRequests +" pickup pending: " + pendingPickupCount + "\r");
+		// 			System.out.flush();
+		// 			Thread.sleep(1000);
+		// 		} catch(Exception e) {
+		// 			e.printStackTrace();
+		// 		}
+		// 	}
+		// }).start();
 
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			@Override
@@ -144,6 +144,7 @@ public class RouteServerImpl extends RouteServiceImplBase {
 
 	protected void stop() {
 		svr.shutdown();
+		qm.shutdown();
 	}
 
 	private void blockUntilShutdown() throws Exception {

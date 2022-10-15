@@ -147,22 +147,22 @@ public class RouteClient {
 
 		// Start Queue Puller
 		qp = new QueuePuller(clientID, host, port);
-		qp.start(false);
+		qp.start(true);
 
 		// Print stats
-		new Thread(() -> {
-			while (true) {
-				try {
-					// Get pending pickup count
-					int receivedMsgsCount = qp.getReceivedMsgsCount();
-					System.out.print("\rRequests sent: " + requestsSent +" msgs received: "+ receivedMsgsCount + "\r");
-					System.out.flush();
-					Thread.sleep(1000);
-				} catch(Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}).start();
+		// new Thread(() -> {
+		// 	while (true) {
+		// 		try {
+		// 			// Get pending pickup count
+		// 			int receivedMsgsCount = qp.getReceivedMsgsCount();
+		// 			System.out.print("\rRequests sent: " + requestsSent +" msgs received: "+ receivedMsgsCount + "\r");
+		// 			System.out.flush();
+		// 			Thread.sleep(1000);
+		// 		} catch(Exception e) {
+		// 			e.printStackTrace();
+		// 		}
+		// 	}
+		// }).start();
 
 		//non-blocking stub
 		ManagedChannel ch = ManagedChannelBuilder.forAddress(RouteClient.host, RouteClient.port).usePlaintext().build();
@@ -173,8 +173,8 @@ public class RouteClient {
 				final int I = 1000;
 				for (int i = 0; i < I; i++) {
 					var msg = RouteClient.constructMessage(i, "/to/somewhere");
-					// System.out.println("Sending request.. " + i);
 					requestsSent += 1;
+					System.out.println("Sending request.. " + requestsSent);
 					asyncstub.request(msg,getServerResponseObserver());
 				}
 				// System.out.println("Sent "+ I + " requests..");
