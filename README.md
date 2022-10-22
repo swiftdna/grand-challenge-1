@@ -47,4 +47,4 @@ Follow the below instructions to run the project
 ## Contributors
 Prashanth Subbiah
 Venkata Satya Phani Sai Sravya
-Ravishanker Thadishetti
+Ravi Shanker Thadishetti
