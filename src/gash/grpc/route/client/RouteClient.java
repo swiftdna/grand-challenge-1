@@ -78,7 +78,8 @@ public class RouteClient {
 
 	private static final Route constructMessage(int mID, String path) {
 		Route.Builder bld = Route.newBuilder();
-		bld.setId(mID);
+		// System.out.println(100000 * clientID + requestsSent);
+		bld.setId(100000 * clientID + requestsSent);
 		bld.setOrigin(RouteClient.clientID);
 		bld.setPath(path);
 		bld.setDestination(dest_port);

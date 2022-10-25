@@ -3,20 +3,33 @@ package gash.grpc.route.server;
 import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingDeque;
 
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
+
 import route.Route;
 import route.WorkItem;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.io.File;
 import java.io.FileWriter; 
 import java.io.IOException;
-import java.security.spec.ECFieldF2m; 
+import java.security.spec.ECFieldF2m;
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public class QueueMonitor {
     // private static final int sMaxWork = 10;
     private static final int sleepTime = 200;
 	private static int _num_threads;
 	private static int _pendingPickupCount = 0;
+	private static int _addedItems = 0;
 	private boolean _verbose = false;
 	private LinkedBlockingDeque<Work> _queue;
 	private LinkedBlockingDeque<Work> _completedqueue;
@@ -25,6 +38,8 @@ public class QueueMonitor {
 	private Monitor _monitor;
 	public Thread threadPool[];
 	public static Map<Long,Integer> overallThreadLoadMap = new HashMap<>();
+	public static Map<Long, Long> overallTaskTimeMap = new HashMap<>();
+	public static Map<Integer,Double> overallCPULoadMap = new HashMap<>();
 	public void start(boolean verbose, int num_threads) {
 		_verbose = verbose;
 		if (num_threads > 0) {
@@ -94,10 +109,22 @@ public class QueueMonitor {
 		}
 	}
 
+	public static long getTimeNow() {
+		return System.currentTimeMillis();
+	}
+
+	public static long calcTimeDifference(long startTime) {
+		long endTime = getTimeNow();
+		return endTime - startTime;
+	}
+
 	public void addWork(route.Route msg) {
 		String content = new String(msg.getPayload().toByteArray());
 		Work input_work = new Work((int) msg.getId(), content, (int)msg.getOrigin(), (int)msg.getDestination());
+		Long task_id = msg.getId();
 		_put.add(input_work);
+		overallTaskTimeMap.put(task_id, getTimeNow());
+		_addedItems += 1;
 	}
 
 	public int getPendingPickupCount() {
@@ -194,7 +221,29 @@ public class QueueMonitor {
 			_isRunning = false;
 		}
 
+		public static Double getProcessCpuLoad() {
+			try {
+				MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+				ObjectName name = ObjectName.getInstance("java.lang:type=OperatingSystem");
+				AttributeList list = mbs.getAttributes(name, new String[]{"ProcessCpuLoad"});
+		
+				return Optional.ofNullable(list)
+						.map(l -> l.isEmpty() ? null : l)
+						.map(List::iterator)
+						.map(Iterator::next)
+						.map(Attribute.class::cast)
+						.map(Attribute::getValue)
+						.map(Double.class::cast)
+						.orElse(null);
+		
+			} catch (Exception ex) {
+				return null;
+			}
+		}
+
 		public void add(Work w) {
+			double x = getProcessCpuLoad();
+			overallCPULoadMap.put(_addedItems, x);
 			_q.add(w);
 		}
 
@@ -240,6 +289,27 @@ public class QueueMonitor {
 			_isRunning = false;
 			// Write the stats to file
 			writeOverallThreadLoad("overallThreadLoad.csv");
+			writeOverallThreadTaskTime("overallThreadTaskTime.csv");
+			writeOverallCPULoad("overallCPULoad.csv");
+		}
+
+		public void writeOverallThreadTaskTime(String fileName) {
+			try {
+				FileWriter myWriter = new FileWriter(fileName);
+				for (Map.Entry<Long,Long> entry : overallTaskTimeMap.entrySet()) { 
+				   // put key and value separated by a colon 
+				   int length = String.valueOf(entry.getValue()).length();
+				   	if (length < 7) {
+					   myWriter.write("Task "+entry.getKey() + ":" + entry.getValue()+"\n"); 
+				   	}
+					// System.out.println(entry.getKey()+"         "+entry.getValue());
+				}
+				myWriter.close();
+				System.out.println("Successfully wrote thread time to the file.");
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
 		}
 
 		public void writeOverallThreadLoad(String fileName) {
@@ -258,6 +328,22 @@ public class QueueMonitor {
 			}
 		}
 
+		public void writeOverallCPULoad(String fileName) {
+			try {
+				FileWriter myWriter = new FileWriter(fileName);
+				for (Map.Entry<Integer,Double> entry : overallCPULoadMap.entrySet()) {
+					if (entry.getValue() >= 0) {
+						myWriter.write(entry.getKey() + ":" + entry.getValue()+"\n"); 
+					}
+				} 
+				myWriter.close();
+				System.out.println("Successfully wrote writeOverallCPULoad to the file.");
+			} catch (IOException e) {
+				System.out.println("An error occurred.");
+				e.printStackTrace();
+			}
+		}
+
 		@Override
 		public void run() {
 			long currentThreadID = Thread.currentThread().getId();
@@ -268,12 +354,15 @@ public class QueueMonitor {
 					int count = overallThreadLoadMap.containsKey(currentThreadID) ? overallThreadLoadMap.get(currentThreadID) : 0;
 					overallThreadLoadMap.put(currentThreadID, count + 1);
 					Work x = _q.take();
+					Long task_id = (long) x._id;
 					if (_verbose) {
 						System.out.println("got "+ x._message+ " from: "+ x._sender + " processed by thread: "+ currentThreadID);
 					}
 					// Processing code
 					x.calculateVowels();
 					_pq.add(x);
+					Long added_time = overallTaskTimeMap.get(task_id);
+					overallTaskTimeMap.put(task_id, calcTimeDifference(added_time));
 				} catch (Exception e) {
 					// ignore - part of the test
 					e.printStackTrace();
@@ -316,6 +405,47 @@ public class QueueMonitor {
 			_put.shutdown();
 		}
 
+		private static void printUsage() {
+			OperatingSystemMXBean operatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
+			// What % CPU load this current JVM is taking, from 0.0-1.0
+			System.out.println("printUsage");
+			// System.out.println(operatingSystemMXBean.getProcessCpuLoad());
+			for (Method method : operatingSystemMXBean.getClass().getDeclaredMethods()) {
+				method.setAccessible(true);
+				System.out.println(method.getName());
+				if (method.getName().startsWith("get")
+					&& Modifier.isPublic(method.getModifiers())) {
+						Object value;
+					try {
+						value = method.invoke(operatingSystemMXBean);
+					} catch (Exception e) {
+						value = e;
+					} // try
+					System.out.println(method.getName() + " = " + value);
+				} // if
+			} // for
+		}
+
+		public static Double getProcessCpuLoad() {
+			try {
+				MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+				ObjectName name = ObjectName.getInstance("java.lang:type=OperatingSystem");
+				AttributeList list = mbs.getAttributes(name, new String[]{"ProcessCpuLoad"});
+		
+				return Optional.ofNullable(list)
+						.map(l -> l.isEmpty() ? null : l)
+						.map(List::iterator)
+						.map(Iterator::next)
+						.map(Attribute.class::cast)
+						.map(Attribute::getValue)
+						.map(Double.class::cast)
+						.orElse(null);
+		
+			} catch (Exception ex) {
+				return null;
+			}
+		}
+
 		@Override
 		public void run() {
 			while (_isRunning) {
@@ -324,6 +454,10 @@ public class QueueMonitor {
 					if (_verbose) {
 						System.out.println("Pending Queue: " + _pq.size() + " Completed items: " + _cq.size());
 					}
+					// Print CPU stats
+					// double x = getProcessCpuLoad();
+					// overallCPULoadMap.put(_addedItems, x);
+					// System.out.println("cpu load - " + x);
 					_pendingPickupCount = _cq.size();
 					Thread.sleep(sleepTime);
 				} catch (InterruptedException e) {
